@@ -55,7 +55,7 @@ function Set-FuzzyDirectory {
             $levelDir | Set-Location
         } elseif ($levelDir.Contains(":")) {
             Set-Location "$levelDir\"
-        }else {
+        } else {
             [String[]] $candidates = Get-ChildItem -Directory | Where-Object { $_.Name -match $levelDir } | Select-Object -ExpandProperty Name
             if ($candidates.Length -eq 0) {
                 Set-Location $startingPoint
