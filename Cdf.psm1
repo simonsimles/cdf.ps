@@ -54,7 +54,7 @@ function Get-Choice([Parameter(Mandatory=$true)] [string[]] $items, [bool] $hasP
             }
         }
     } finally {
-        Clear-LinesAbove ($pageHeight + 1 + $hasPrompt)
+        Clear-LinesAbove ($currentPageItems.Length + 1 + $hasPrompt)
         [System.Console]::CursorVisible = $true
     }
 }
@@ -74,7 +74,7 @@ function Set-FuzzyDirectory {
     [CmdletBinding()]
     param([Parameter(Mandatory=$true, ValueFromPipeline)] [string] $path)
     $startingPoint = Get-Location
-    Get-PathSegments $path | Where-Object {-not [String]::IsNullOrEmpty($_)} | ForEach-Object {
+    Get-PathSegments ($path.TrimEnd("\/")) | Where-Object {-not [String]::IsNullOrEmpty($_)} | ForEach-Object {
         $levelDir = $_
         if ($levelDir -in @(".", "..")) {
             $levelDir | Set-Location
