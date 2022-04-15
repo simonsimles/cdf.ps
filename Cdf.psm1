@@ -20,27 +20,41 @@ function Clear-LinesAbove([int] $numberOfLinesToClear) {
 
 function Get-Choice([Parameter(Mandatory=$true)] [string[]] $items, [bool] $hasPrompt){
     $choice = 0
+    $pageHeight = [System.Console]::BufferHeight, 10 | Measure-Object -Minimum | Select-Object -ExpandProperty Minimum
+    $maxPage = [Math]::Ceiling($items.Length / $pageHeight)-1
+    $currentPage = 0
     try {
         [System.Console]::CursorVisible = $false
-        Write-ItemLines $items $choice
+        $currentPageItems = $items[($currentPage * $pageHeight)..(($currentPage + 1) * $pageHeight - 1)]
+        Write-ItemLines $currentPageItems $choice
+        Write-Host -ForegroundColor ([System.ConsoleColor]::DarkYellow) "Page $($currentPage + 1)/$($maxPage + 1)"
         while($true) {
             $press = [System.Console]::ReadKey()
             if ($press.Key -eq [System.ConsoleKey]::UpArrow) {
                 $choice = ($choice - 1), 0 | Measure-Object -Maximum | Select-Object -ExpandProperty Maximum
             } elseif ($press.Key -eq [System.ConsoleKey]::DownArrow) {
                 $choice = ($choice + 1), ($items.Count - 1) | Measure-Object -Minimum | Select-Object -ExpandProperty Minimum
+            } elseif ($press.Key -eq [System.ConsoleKey]::RightArrow) {
+                $currentPage = ($currentPage + 1), $maxPage | Measure-Object -Minimum | Select-Object -ExpandProperty Minimum
+                $choice = 0
+            } elseif ($press.Key -eq [System.ConsoleKey]::LeftArrow) {
+                $currentPage = ($currentPage - 1), 0 | Measure-Object -Maximum | Select-Object -ExpandProperty Maximum
+                $choice = 0
             }
+
             if ($press.Key -eq [System.ConsoleKey]::Escape) {
                 return $null
             } elseif ($press.Key -eq [System.ConsoleKey]::Enter) {
-                return $items[$choice]
+                return $currentPageItems[$choice]
             } else {
-                Clear-LinesAbove ($items.Count)
-                Write-ItemLines $items $choice
+                Clear-LinesAbove ($currentPageItems.Length + 1)
+                $currentPageItems = $items[($currentPage * $pageHeight)..(($currentPage + 1) * $pageHeight - 1)]
+                Write-ItemLines $currentPageItems $choice
+                Write-Host -ForegroundColor ([System.ConsoleColor]::DarkYellow) "Page $($currentPage + 1)/$($maxPage + 1)"
             }
         }
     } finally {
-        Clear-LinesAbove ($items.Count + $hasPrompt)
+        Clear-LinesAbove ($pageHeight + 1 + $hasPrompt)
         [System.Console]::CursorVisible = $true
     }
 }
