@@ -18,7 +18,7 @@ function Clear-LinesAbove([int] $numberOfLinesToClear) {
     [System.Console]::SetCursorPosition(0, [System.Console]::CursorTop - $numberOfLinesToClear)
 }
 
-function Get-Choice([Parameter(Mandatory=$true)] [array] $items, [bool] $hasPrompt){
+function Get-Choice([Parameter(Mandatory=$true)] [string[]] $items, [bool] $hasPrompt){
     $choice = 0
     try {
         [System.Console]::CursorVisible = $false
@@ -45,24 +45,41 @@ function Get-Choice([Parameter(Mandatory=$true)] [array] $items, [bool] $hasProm
     }
 }
 
+function Get-PathSegments([string] $path) {
+    $parent = Split-Path -LiteralPath $path
+    if ([String]::IsNullOrEmpty($parent)) {
+        @($path)
+    } else {
+        $leaf = $path.Substring($parent.Length + 1)
+        [string[]] $parentList = Get-PathSegments $parent
+        $parentList + @($leaf)
+    }
+}
+
 function Set-FuzzyDirectory {
     [CmdletBinding()]
     param([Parameter(Mandatory=$true, ValueFromPipeline)] [string] $path)
     $startingPoint = Get-Location
-    $path.Split("/").Split("\") | Where-Object {-not [String]::IsNullOrEmpty($_)} | ForEach-Object {
+    Get-PathSegments $path | Where-Object {-not [String]::IsNullOrEmpty($_)} | ForEach-Object {
         $levelDir = $_
         if ($levelDir -in @(".", "..")) {
             $levelDir | Set-Location
         } elseif ($levelDir.Contains(":")) {
             Set-Location "$levelDir\"
         } else {
-            [String[]] $candidates = Get-ChildItem -Directory | Where-Object { $_.Name -match $levelDir } | Select-Object -ExpandProperty Name
+            [String[]] $candidates = & {if ($levelDir -eq "*") { 
+                Get-ChildItem -Directory 
+                } else {
+                    Get-ChildItem -Directory | Where-Object { $_.Name -match $levelDir }
+                }} | Select-Object -ExpandProperty Name
             if ($candidates.Length -eq 0) {
                 Set-Location $startingPoint
                 Set-Location $path
                 return
             } elseif ($candidates.Length -eq 1) {
                 Set-Location $candidates[0]
+            } elseif ($candidates -contains $levelDir) {
+                Set-Location $levelDir
             } else {
                 Write-Host -NoNewline "Select next folder "
                 Write-Host -NoNewline -ForegroundColor Green "(Current location: $(Get-Location))"
@@ -80,4 +97,8 @@ function Set-FuzzyDirectory {
     }
 }
 
-Export-ModuleMember -Function "Set-FuzzyDirectory"
+function Set-CdAlias {
+    Set-Item -Path "Alias:cd" -Value "Set-FuzzyDirectory" -Options "AllScope"
+}
+
+Export-ModuleMember -Function @("Set-FuzzyDirectory", "Set-CdAlias")
