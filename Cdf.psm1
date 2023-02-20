@@ -70,18 +70,32 @@ function Get-PathSegments([string] $path) {
     }
 }
 
+function Set-DotDirectory([string] $dots) {
+    $directoriesToMoveUp = $dots.Length - 1
+    $moveString = if ($directoriesToMoveUp -ge 1) {
+        (1..$directoriesToMoveUp | ForEach-Object {
+            ".."
+        }) -join "/"
+    } else {
+        "."
+    }
+    $moveString | Set-Location
+}
+
 function Set-FuzzyDirectory {
     [CmdletBinding()]
     param([Parameter(Mandatory=$true, ValueFromPipeline)] [string] $path)
     $startingPoint = Get-Location
     Get-PathSegments ($path.TrimEnd("\/")) | Where-Object {-not [String]::IsNullOrEmpty($_)} | ForEach-Object {
         $levelDir = $_
-        if ($levelDir -in @(".", "..")) {
-            $levelDir | Set-Location
+        if ($levelDir -match "\.+") {
+            Set-DotDirectory $levelDir
         } elseif ($levelDir.Contains(":")) {
             Set-Location "$levelDir\"
+        } elseif ($levelDir -eq "~") {
+            $levelDir | Set-Location
         } else {
-            [String[]] $candidates = & {if ($levelDir -eq "*") { 
+            [String[]] $candidates = & {if ($levelDir -eq "*") {
                 Get-ChildItem -Directory 
                 } else {
                     Get-ChildItem -Directory | Where-Object { $_.Name -match $levelDir }
