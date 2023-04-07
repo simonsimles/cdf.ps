@@ -88,7 +88,7 @@ function Set-FuzzyDirectory {
     $startingPoint = Get-Location
     Get-PathSegments ($path.TrimEnd("\/")) | Where-Object {-not [String]::IsNullOrEmpty($_)} | ForEach-Object {
         $levelDir = $_
-        if ($levelDir -match "\.+") {
+        if ($levelDir -match "^\.+") {
             Set-DotDirectory $levelDir
         } elseif ($levelDir.Contains(":")) {
             Set-Location "$levelDir\"
