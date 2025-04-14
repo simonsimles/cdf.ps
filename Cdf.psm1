@@ -60,11 +60,14 @@ function Get-Choice([Parameter(Mandatory=$true)] [string[]] $items, [bool] $hasP
 }
 
 function Get-PathSegments([string] $path) {
+    if ($path.EndsWith(":")) {
+        return @($path)
+    }
     $parent = Split-Path -LiteralPath $path
     if ([String]::IsNullOrEmpty($parent)) {
         @($path)
     } else {
-        $leaf = $path.Substring($parent.Length + 1)
+        $leaf = Split-Path -Leaf $path
         [string[]] $parentList = Get-PathSegments $parent
         $parentList + @($leaf)
     }
@@ -91,7 +94,7 @@ function Set-FuzzyDirectory {
         if ($levelDir -match "^\.+") {
             Set-DotDirectory $levelDir
         } elseif ($levelDir.Contains(":")) {
-            Set-Location "$levelDir\"
+            Set-Location "$levelDir"
         } elseif ($levelDir -eq "~") {
             $levelDir | Set-Location
         } else {
@@ -99,7 +102,7 @@ function Set-FuzzyDirectory {
                 Get-ChildItem -Directory 
                 } else {
                     Get-ChildItem -Directory | Where-Object { $_.Name -match $levelDir }
-                }} | Select-Object -ExpandProperty Name
+                }} | Select-Object -ExpandProperty Name | Foreach-Object {$_.Trim([char]0)}
             if ($candidates.Length -eq 0) {
                 Set-Location $startingPoint
                 Set-Location $path
